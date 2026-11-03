@@ -10,7 +10,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     CRUD for User accounts:
     - Managers can list, create, edit, and delete any user.
-    - Employees can only view/edit their own profile (/me/ or /users/{id}/).
+    - Employees can only read their own profile (/me/ or /users/{id}/).
     """
     queryset = User.objects.all().order_by('id')
 
@@ -20,9 +20,11 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'destroy']:
+        # Only Managers can create, update, or delete employee accounts
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsManager()]
-        if self.action in ['retrieve', 'update', 'partial_update']:
+        # Employees can only view (GET) their own account
+        if self.action == 'retrieve':
             return [IsManagerOrSelf()]
         if self.action == 'me':
             return [IsAuthenticated()]
