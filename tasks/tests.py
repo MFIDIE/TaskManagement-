@@ -170,3 +170,50 @@ class TaskPermissionAPITests(APITestCase):
         # Title and assigned_to were NOT modified
         self.assertEqual(self.task_alice.title, "Alice's Task")
         self.assertEqual(self.task_alice.assigned_to, self.employee_alice)
+
+    # ==========================================
+    # 5. FILTERING, SORTING & SEARCH
+    # ==========================================
+    def test_filter_tasks_by_status(self):
+        """Filtering by status returns only matching tasks."""
+        self.client.force_authenticate(user=self.manager)
+        # Update Bob's task to COMPLETED
+        self.task_bob.status = Task.Status.COMPLETED
+        self.task_bob.save()
+
+        # Query only COMPLETED tasks
+        response = self.client.get("/api/tasks/?status=COMPLETED")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.task_bob.id)
+
+    def test_filter_tasks_by_priority(self):
+        """Filtering by priority returns only tasks with that priority."""
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.get("/api/tasks/?priority=HIGH")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.task_alice.id)
+
+    def test_order_tasks_by_deadline(self):
+        """Ordering by deadline sorts ascending and descending."""
+        self.client.force_authenticate(user=self.manager)
+        # Ascending: Alice's deadline (+3 days) comes before Bob's (+5 days)
+        response_asc = self.client.get("/api/tasks/?ordering=deadline")
+        self.assertEqual(response_asc.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_asc.data[0]["id"], self.task_alice.id)
+        self.assertEqual(response_asc.data[1]["id"], self.task_bob.id)
+
+        # Descending: Bob's deadline (+5 days) comes before Alice's (+3 days)
+        response_desc = self.client.get("/api/tasks/?ordering=-deadline")
+        self.assertEqual(response_desc.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_desc.data[0]["id"], self.task_bob.id)
+        self.assertEqual(response_desc.data[1]["id"], self.task_alice.id)
+
+    def test_search_tasks_by_keyword(self):
+        """Searching by keyword matches across title and description."""
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.get("/api/tasks/?search=frontend")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.task_alice.id)

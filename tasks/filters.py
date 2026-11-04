@@ -10,4 +10,4 @@ class TaskFilter(django_filters.FilterSet):
 
     class Meta:
         model = Task
-        fields = ['status', 'priority', 'assigned_to']
+        fields = ['status', 'priority', 'assigned_to', 'deadline_before', 'deadline_after']
